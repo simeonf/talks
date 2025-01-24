@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="author" content="Simeon Franklin">
+  <title>How Charlie Marsh is saving Python with Rust</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <link rel="stylesheet" href="https://unpkg.com/reveal.js@3.9.2//css/reset.css">
+  <link rel="stylesheet" href="https://unpkg.com/reveal.js@3.9.2//css/reveal.css">
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+  <link rel="stylesheet" href="https://unpkg.com/reveal.js@3.9.2//css/theme/simple.css" id="theme">
+  <link rel="stylesheet" href="uv.css"/>
+  <!-- Printing and PDF exports -->
+  <script>
+    var link = document.createElement( 'link' );
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = window.location.search.match( /print-pdf/gi ) ? 'https://unpkg.com/reveal.js@3.9.2//css/print/pdf.css' : 'https://unpkg.com/reveal.js@3.9.2//css/print/paper.css';
+    document.getElementsByTagName( 'head' )[0].appendChild( link );
+  </script>
+  <!--[if lt IE 9]>
+  <script src="https://unpkg.com/reveal.js@3.9.2//lib/js/html5shiv.js"></script>
+  <![endif]-->
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+<section id="title-slide">
+  <h1 class="title">How Charlie Marsh is saving Python with Rust</h1>
+  <p class="author">Simeon Franklin</p>
+</section>
+
+<section>
+<section id="about" class="title-slide slide level1" data-background-color="#F0FAFD">
+<h1 data-background-color="#F0FAFD">about</h1>
+
+</section>
+<section id="bio" class="slide level2">
+<h2>bio</h2>
+<ul>
+<li>Simeon Franklin / <a href="https://x.com/simeonfranklin">https://x.com/simeonfranklin</a></li>
+<li>local boy - MJC, Stan State</li>
+<li>SWE, Technical Instructor, Eng Lead,</li>
+<li><del>x-X</del></li>
+<li><del>x-tweep</del></li>
+<li>Formerly at the company formerly known as Twitter</li>
+</ul>
+<p><img data-src="./headshot.jpg" width="300" /></p>
+</section>
+<section id="plusplus" class="slide level2">
+<h2>PlusPlus</h2>
+<p>I am currently the Engineering Lead for a startup called PlusPlus</p>
+<p><img data-src="./plusplus.png" width="300" /></p>
+<p>But opinions are my own!</p>
+</section>
+<section id="confession-time" class="slide level2">
+<h2>Confession Time</h2>
+<p><em>Hi, my name is Simeon Franklin and I am a Pythonista.</em></p>
+</section>
+<section id="confession-time-1" class="slide level2">
+<h2>Confession Time</h2>
+<ul>
+<li>I like 🦆 typing and I cannot lie</li>
+<li>I'm still not wild about types</li>
+<li>I do quote from the <em>Zen of Python</em> (Long Live Tim Peters)</li>
+<li>There will probably be some Monty Python jokes</li>
+</ul>
+</section></section>
+<section>
+<section id="ruff" class="title-slide slide level1" data-background-color="#F7F9F1">
+<h1 data-background-color="#F7F9F1">ruff</h1>
+<p><em>Prologue</em></p>
+</section>
+<section id="new-project-who-dis" class="slide level2">
+<h2>New Project, who dis?</h2>
+<p>In 2023 I joined a startup with a large mature Python/Django codebase.</p>
+<p>Large Python codebases can be challenging but fortunately we were all set up with tooling to enforce project coding standards.</p>
+</section>
+<section id="linting-tools" class="slide level2">
+<h2>linting tools</h2>
+<p>Including but not limited to:</p>
+<ul>
+<li>mypy (type checking)</li>
+<li>bandit (security scanner)</li>
+<li>mccabe (complexity scanner)</li>
+<li>pep8 (formatting)</li>
+<li>isort (formatting)</li>
+<li>black (formatting)</li>
+<li>pylint (formatting &amp; code smells)</li>
+<li>pyflakes (code smells)</li>
+<li>flake8 (pep8 formatting for pyflakes)</li>
+</ul>
+</section>
+<section id="maturity-is-good" class="slide level2">
+<h2>Maturity is Good!</h2>
+<p>For every commit a variety of tools run to ensure code reviews don't bikeshed over what line the parentheses goes on or how much whitespace to put around the commas.</p>
+<p>And also we detect a variety of bad code smells, potential security flaws, or un-pythonic code.</p>
+<p class="fragment large">🎉</p>
+</section>
+<section id="downsides" class="slide level2">
+<h2>Downsides</h2>
+<ul>
+<li>Speed: It can take several minutes to check a commit!</li>
+<li>Complexity: A lot of tools and a lot of configuration files</li>
+</ul>
+<p class="fragment large">😞</p>
+</section>
+<section id="ruff-1" class="slide level2">
+<h2>Ruff</h2>
+<p>Sometime in 2023 I noticed folks on Twitter talking about a new linter <strong>Ruff</strong>.</p>
+<p>It's written in Rust and it's supposed to be fast!</p>
+<p>I ignored it. My project is mature and messing with linting is low on my priority list.</p>
+</section>
+<section id="try-it-maybe-youll-like-it" class="slide level2">
+<h2>Try it, Maybe You'll Like it!</h2>
+<p>At some point we had a hackathon and I tried adding Ruff to my pre-commit chain as a replacement for flake8 to see if I'd notice the speed difference.</p>
+</section>
+<section id="huh" class="slide level2">
+<h2>Huh</h2>
+<p>Ruff is also a drop-in replacement for black and isort and mccabe?</p>
+<p>Ruff can replace pylint* and pyflakes too?</p>
+<p><em>See <a href="https://github.com/astral-sh/ruff/issues/970">https://github.com/astral-sh/ruff/issues/970</a> for Pylint compatibility status.</em></p>
+<p>Oh yeah - and the speed claims?</p>
+</section>
+<section id="speed" class="slide level2">
+<h2>Speed</h2>
+<p>See <a href="https://docs.astral.sh/ruff/#testimonials">https://docs.astral.sh/ruff/#testimonials</a></p>
+</section>
+<section id="speed-1" class="slide level2">
+<h2>Speed</h2>
+<p>Nick Schrock, founder of Elementl, co-creator of GraphQL:</p>
+<blockquote>
+<p>Why is Ruff a gamechanger? Primarily because it is nearly 1000x faster. Literally. Not a typo. On our largest module (dagster itself, 250k LOC) pylint takes about 2.5 minutes, parallelized across 4 cores on my M1. Running ruff against our entire codebase takes .4 seconds.</p>
+</blockquote>
+</section>
+<section id="speed-2" class="slide level2">
+<h2>Speed</h2>
+<p>Bryan Van de Ven, co-creator of Bokeh, original author of Conda:</p>
+<blockquote>
+<p>Ruff is ~150-200x faster than flake8 on my machine, scanning the whole repo takes ~0.2s instead of ~20s. This is an enormous quality of life improvement for local dev. It's fast enough that I added it as an actual commit hook, which is terrific.</p>
+</blockquote>
+</section>
+<section id="astral" class="slide level2">
+<h2>Astral</h2>
+<p>Ruff is created by a company called Astral</p>
+<p><a href="https://docs.astral.sh/">https://docs.astral.sh/</a></p>
+<p>Founder <a href="https://x.com/charliermarsh">https://x.com/charliermarsh</a></p>
+</section>
+<section id="ambitious" class="slide level2">
+<h2>Ambitious</h2>
+<p><img data-src="./astral.png" width="900" /></p>
+</section>
+<section id="is-this-ambitious" class="slide level2">
+<h2>Is this ambitious?</h2>
+<p>Did Python really need another linter?</p>
+<p>The speed gains are impressive!</p>
+<p>And the extend and embrace attitude made a whole ecosystem of separate tools and community plugins un-necessary..</p>
+</section>
+<section id="rust-speed" class="slide level2">
+<h2>Rust &amp; Speed</h2>
+<p><a href="https://blog.jetbrains.com/pycharm/2023/02/ruff-python-linter-interview-with-charlie-marsh/">https://blog.jetbrains.com/pycharm/2023/02/ruff-python-linter-interview-with-charlie-marsh/</a></p>
+<ul>
+<li>speed is a feature</li>
+<li>js world building tooling in "not js" for speed and reliability</li>
+<li>esbuild (golang), bun (zig), swc (rust), etc.</li>
+</ul>
+<p>Takeaway: High level language tooling should be written in lower level languages languages for speed and <code>rust</code> is his weapon of choice.</p>
+</section>
+<section id="philosophy" class="slide level2">
+<h2>Philosophy</h2>
+<ul>
+<li>In a mature language a single best-of-breed tool is better than an ecosystem of unix philosophy tools</li>
+<li>For example <code>ruff</code> might someday expand to typechecking as well (mypy, pyright, etc)</li>
+</ul>
+<p>One fast tool for linting, autoformatting, typechecking? Yes please!</p>
+</section></section>
+<section>
+<section id="uv" class="title-slide slide level1" data-background-color="#FFFDE7">
+<h1 data-background-color="#FFFDE7">uv</h1>
+<p>Which leads to the next astral projection.</p>
+</section>
+<section id="in-a-minute" class="slide level2">
+<h2>In a minute</h2>
+<p><img data-src="./different.png" /></p>
+</section>
+<section id="python-problems" class="slide level2">
+<h2>Python Problems</h2>
+<p>What's wrong with Python?</p>
+<p><img data-src="https://s3.dualstack.us-east-2.amazonaws.com/pythondotorg-assets/media/files/python-logo-only.svg" style="border: 0px" /></p>
+</section>
+<section id="python-problems-1" class="slide level2">
+<h2>Python Problems</h2>
+<p>What's wrong with Python?</p>
+<ul>
+<li><del>significant whitespace</del></li>
+<li><del>weak (optional) type system</del></li>
+<li><del>slow runtime</del></li>
+</ul>
+<p>Shut up hater!</p>
+</section>
+<section id="go-away-or-i-shall-taunt-you-a-second-time" class="slide level2">
+<h2>Go away or I shall taunt you a second time!</h2>
+<p><img data-src="./taunt.jpg" /></p>
+</section>
+<section id="python-problems-2" class="slide level2">
+<h2>Python Problems</h2>
+<p>What's wrong with Python?</p>
+<ul>
+<li>distribution</li>
+<li>runtimes and environments</li>
+<li>packaging and installation</li>
+</ul>
+</section>
+<section id="python-problems-3" class="slide level2">
+<h2>Python Problems</h2>
+<p>Even us fanboys have to admit: these are real problems that have been… <em>solved</em> by whole ecosystems of competing tools.</p>
+</section>
+<section id="installing-python" class="slide level2">
+<h2>Installing Python</h2>
+<p>That's a job for your OS!</p>
+<p>Oh - don't install any packages into your OS-level python or you'll break your OS!</p>
+</section>
+<section id="installing-python-1" class="slide level2">
+<h2>Installing Python</h2>
+<p>What if my CentOS comes with Python 3.7 and I want 3.11?</p>
+<p><img data-src="./compile.png" width="300" /></p>
+<p>If you aren't a Gentoo user this doesn't sound like a good time!</p>
+</section>
+<section id="managing-dependencies" class="slide level2">
+<h2>Managing Dependencies</h2>
+<p><code>pip install -r requirements.txt</code> right?</p>
+<p>Oh you want completely reproducible builds of your Python project. No problem - just use one of:</p>
+</section>
+<section id="managing-dependencies-1" class="slide level2">
+<h2>Managing Dependencies</h2>
+<ul>
+<li>pip-tools</li>
+<li>pipenv</li>
+<li>poetry</li>
+<li>pdm (poetry but better)</li>
+<li>pipx (maybe you want to install an executable?)</li>
+</ul>
+<p>Oh and don't forget to add <code>pyenv</code> for the Python version management even if you use something else for dependencies.</p>
+</section>
+<section id="not-to-mention-publishing-packages" class="slide level2">
+<h2>Not to mention publishing packages</h2>
+<p>Do I need <code>hatchling</code>? And <code>twine</code>?</p>
+<p class="fragment large"><img src="https://i.imgflip.com/9hnn3d.jpg"></p>
+</section>
+<section id="javascript-folks-so" class="slide level2">
+<h2>Javascript folks: So?</h2>
+<p>I know the javascript folks are not impressed but take it from me - this proliferation of tools is complexity and pain.</p>
+</section>
+<section id="tldr" class="slide level2">
+<h2>tl;dr</h2>
+<p>I could keep ranting at length but let's take a thought exercise:</p>
+<blockquote>
+<p>I have this cool script I found that's 30 lines of code and it uses a couple of scientific libraries. But when I save it and run it I get "ModuleNotFound: no module named scipy" error. How do I run it?</p>
+<p>– A beginner</p>
+</blockquote>
+</section>
+<section id="possible-conversations" class="slide level2">
+<h2>Possible conversations</h2>
+<ul>
+<li>Do you know what a virtualenv is?</li>
+<li>Make one of those, activate it, and run <code>pip install scipy</code>. <em>Yes, from the command line.</em></li>
+<li>Your system python doesn't ship with <code>pip</code> huh…</li>
+<li>Have you ever heard of Anaconda Python? You're going to need to edit your system path…</li>
+</ul>
+</section>
+<section id="this-is-pain" class="slide level2">
+<h2>This is pain</h2>
+<p>Packaging, requirements, distribution…</p>
+<p>Coincidentally <em>stuff that was considered outside core Python historically.</em></p>
+<p>You may remember the long saga of <code>easy_install</code>, <code>distutils</code>, <code>setuptools</code>, the bad old days of .eggs, etc.</p>
+</section>
+<section id="uv-1" class="slide level2">
+<h2>uv</h2>
+<p>Oh yeah - I was going to talk about <code>uv</code>!</p>
+<p>In 2024 I found out Charlie Marsh and the folks at Astral were working on <code>uv</code>.</p>
+</section>
+<section id="uv-2" class="slide level2">
+<h2>uv</h2>
+<p><img data-src="./uv.png" width="800" /></p>
+</section>
+<section id="deja-vu" class="slide level2">
+<h2>deja vu</h2>
+<p>Ok, I get fast is kind of your thing, Charlie. But <code>pip install</code> is fast enough for me…</p>
+<p>And do we really need yet another package manager? At least its not called <code>yapip</code>.</p>
+<p><strong>[Insert relevant xkcd here]</strong></p>
+</section>
+<section id="yes" class="slide level2">
+<h2>Yes!</h2>
+<p>And I really need to stop underestimating astral and Charlie Marsh.</p>
+</section>
+<section id="features" class="slide level2">
+<h2>Features</h2>
+<p>Speed. <em>Duh</em></p>
+<p>Now that you mention it, updating a library in my dependencies takes 10 minutes to produce a new set of pinned transitive dependencies using <code>pip-compile</code>.</p>
+</section>
+<section id="transitive-dependencies" class="slide level2">
+<h2>Transitive Dependencies</h2>
+<p>Will it build?</p>
+<p><em>requirements.txt</em></p>
+<pre><code>a==1.0
+c&gt;=5.0
+</code></pre>
+<p>I don't see why not…</p>
+</section>
+<section id="transitive-dependencies-1" class="slide level2">
+<h2>Transitive Dependencies</h2>
+<p>Resolve to find out… Don't forget to account for OS and version markers!</p>
+ <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+  </script>
+<pre class="mermaid" style="width:400px;">
+flowchart TD
+    a[a==1.0] --> b[b==2.x]
+    a --> d[c==5.x]
+    b --> c[c==4.x]
+</pre>
+
+<p><a href="https://docs.astral.sh/uv/concepts/resolution/#basic-examples">https://docs.astral.sh/uv/concepts/resolution/#basic-examples</a></p>
+</section>
+<section id="speed-3" class="slide level2">
+<h2>Speed</h2>
+<p>This can take a while with a real world project with hundreds of direct dependencies and thousands of transitive dependencies.</p>
+<p><code>uv</code> is orders of magnitude faster at this as well as orders of magnitude faster at actually installing dependencies.</p>
+</section>
+<section id="embrace-replace" class="slide level2">
+<h2>Embrace &amp; Replace</h2>
+<p>Great - I suppose I have to learn a new config and new project workflow?</p>
+<p>Nope. <code>uv</code> is a drop-in replacement for <code>pip</code>, <code>pipx</code>, <code>pip-tools</code>, <code>virtualenv</code>, etc.</p>
+</section>
+<section id="embrace-replace-1" class="slide level2">
+<h2>Embrace &amp; Replace</h2>
+<p>I updated my workflow from</p>
+<pre><code>$ pip-compile
+$ pip install -r
+</code></pre>
+<p>to</p>
+<pre><code>$ uv pip compile
+$ uv pip install -r
+</code></pre>
+<p class="fragment large" style="color:red;">❤</p>
+</section>
+<section id="that-was-easy" class="slide level2">
+<h2>That was easy</h2>
+<p>But is speed the only benefit of uv?</p>
+</section>
+<section id="distribution-hurts-less" class="slide level2">
+<h2>Distribution hurts less</h2>
+<p>Demo time:</p>
+<pre><code>$ uvx --python 3.12 textual-demo
+</code></pre>
+<p class="fragment"><em>Seriously - do this now.</em> </p>
+</section>
+<section id="tool-management" class="slide level2">
+<h2>Tool Management</h2>
+<p><code>uv</code> is a <code>pipsi</code> / <code>pipx</code> replacement.</p>
+<p>Use <code>uv tool run</code> (or <code>uvx</code>) which will download and install tools and run them.</p>
+<p>Installs to a virtualenv, auto <code>$PATH</code> managment, can specify what version of Python to use, etc.</p>
+<p><a href="https://github.com/astral-sh/uv?tab=readme-ov-file#tool-management">https://github.com/astral-sh/uv?tab=readme-ov-file#tool-management</a></p>
+</section>
+<section id="tool-management-1" class="slide level2">
+<h2>Tool Management</h2>
+<pre><code>$ uvx rich-cli
+The executable `rich-cli` was not found.
+warning: An executable named `rich-cli` is not provided by package `rich-cli`.
+The following executables are provided by `rich-cli`:
+- rich
+Consider using `uvx --from rich-cli &lt;EXECUTABLE_NAME&gt;` instead.
+</code></pre>
+<p><em>That is a nice error message!</em></p>
+<pre><code>$ uvx --from rich-cli rich -h 5 tags.csv
+┌────────────────────────────────┬────────────────────────────────┐
+│ accelerator                    │ Accelerator                    │
+│ accessibility                  │ Accessibility                  │
+│ advanced-java                  │ advanced java                  │
+│ advanced-python                │ Advanced Python                │
+│ agile-basics                   │ agile basics                   │
+└────────────────────────────────┴────────────────────────────────┘
+</code></pre>
+</section>
+<section id="python-management" class="slide level2">
+<h2>Python Management</h2>
+<p>See <a href="https://github.com/astral-sh/python-build-standalone">https://github.com/astral-sh/python-build-standalone</a></p>
+<pre><code>$ uv python install 3.10 3.11 3.12
+Searching for Python versions matching: Python 3.10
+Searching for Python versions matching: Python 3.11
+Searching for Python versions matching: Python 3.12
+Installed 3 versions in 3.42s
+# Or as needed
+$ uv run --python 3.8 example.py
+</code></pre>
+<p>and remember - <code>pyenv</code> builds python from source. It does not take 3s!</p>
+</section>
+<section id="virtualenv" class="slide level2">
+<h2>Virtualenv</h2>
+<pre><code>$ uv venv --python 3.12.0
+Using Python 3.12.0
+Creating virtual environment at: .venv
+Activate with: source .venv/bin/activate
+$ uv pip install foobar  # installs in .venv
+$ uv run myscript.py     # runs in virtualenv
+</code></pre>
+</section>
+<section id="project-management" class="slide level2">
+<h2>Project Management</h2>
+<ul>
+<li><code>uv init</code> - .venv, pyproject.toml, .python-version, uv.lock</li>
+<li><code>uv add</code> - install, add to deps in pyproject, update lockfile</li>
+<li><code>uv lock --upgrade-package</code> - update only specified packages if possible</li>
+</ul>
+</section>
+<section id="script-dependencies" class="slide level2">
+<h2>Script Dependencies</h2>
+<pre><code>$ uv run --with flask example.py
+</code></pre>
+<p><a href="https://docs.astral.sh/uv/guides/scripts/">https://docs.astral.sh/uv/guides/scripts/</a></p>
+</section>
+<section id="inline-script-dependencies" class="slide level2">
+<h2>Inline Script Dependencies</h2>
+<p>See <a href="https://packaging.python.org/en/latest/specifications/inline-script-metadata/#inline-script-metadata">https://packaging.python.org/en/latest/specifications/inline-script-metadata/#inline-script-metadata</a></p>
+<p>My script - <a href="https://gist.github.com/simeonf/db61cfed74b75da6a17f92ad16afe649">https://gist.github.com/simeonf/db61cfed74b75da6a17f92ad16afe649</a></p>
+</section>
+<section id="inline-script-dependencies-1" class="slide level2">
+<h2>Inline Script Dependencies</h2>
+<p>Demo:</p>
+<pre><code>$ uv run https://gist.githubusercontent.com/simeonf/db61cfed74b75da6a17f92ad16afe649/raw/c563660afede009bb58bf52f6ed553c62093e479/example.py
+</code></pre>
+</section>
+<section id="and-much-more" class="slide level2">
+<h2>And much more</h2>
+<p>Out of time to cover:</p>
+<ul>
+<li><code>uv build</code> and <code>uv publish</code></li>
+<li>workspaces (stolen from rust's Cargo)</li>
+<li><code>uv tree</code> (replace <code>pipdeptree</code> / <code>pipenv graph</code> etc)</li>
+<li><code>uv cache</code> (manage your resolution cache with an eye towards GitHub Actions/CircleCi)</li>
+</ul>
+</section></section>
+<section>
+<section id="conclusion" class="title-slide slide level1" data-background-color="#FBE8EA">
+<h1 data-background-color="#FBE8EA">Conclusion</h1>
+
+</section>
+<section id="lessons-learned" class="slide level2">
+<h2>Lessons Learned</h2>
+<ul>
+<li>Astral and Charlie Marsh are two for two!</li>
+<li>Speed is a feature
+<ul>
+<li>saving me CircleCI $$$ and developer attention</li>
+</ul></li>
+<li>Theme: One integrated tool replaces an ecosystem of competing tools</li>
+<li>Addressing Python pain points: packaging, requirements, distribution… all got a lot better in 2024</li>
+</ul>
+</section>
+<section id="gratitude" class="slide level2">
+<h2>Gratitude</h2>
+<p>My title is clickbait - but I do actually feel a lot less pain due to Charlie Marsh (and Rust I guess!)</p>
+<h3 id="thanks">THANKS!</h3>
+</section>
+<section id="uv-making-python-great-again" class="slide level2" data-background-color="#D00">
+<h2 data-background-color="#D00">UV: Making Python Great Again!</h2>
+<p><em>Gotta get some more clickbait in there…</em></p>
+</section>
+<section id="questions" class="slide level2">
+<h2>Questions?</h2>
+</section></section>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/reveal.js@3.9.2//js/reveal.js"></script>
+
+  <script>
+
+      // Full list of configuration options available at:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        // Push each slide change to the browser history
+        history: true,
+        // The "normal" size of the presentation, aspect ratio will be preserved
+        // when the presentation is scaled to fit different resolutions. Can be
+        // specified using percentage units.
+        width: 1200,
+
+        // Optional reveal.js plugins
+        dependencies: [
+          { src: 'https://unpkg.com/reveal.js@3.9.2//lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'https://unpkg.com/reveal.js@3.9.2//plugin/zoom-js/zoom.js', async: true },
+          { src: 'https://unpkg.com/reveal.js@3.9.2//plugin/notes/notes.js', async: true }
+        ]
+      });
+    </script>
+    </body>
+</html>

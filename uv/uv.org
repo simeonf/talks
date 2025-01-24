@@ -1,0 +1,528 @@
+#+TITLE: How Charlie Marsh is saving Python with Rust
+#+AUTHOR: Simeon Franklin
+#+OPTIONS: ^:nil
+
+# build with --include-in-header=slides.css
+# $ docker exec -ti -u root c17ca652ec3d bash
+# # apt install postgresql-client
+
+* about
+  :PROPERTIES:
+  :background-color: #F0FAFD
+  :END:
+
+** bio
+
+- Simeon Franklin / [[https://x.com/simeonfranklin]]
+- local boy - MJC, Stan State
+- SWE, Technical Instructor, Eng Lead,
+- +x-X+
+- +x-tweep+
+- Formerly at the company formerly known as Twitter
+
+#+ATTR_HTML: :width 300px
+[[file:./headshot.jpg]]
+
+** PlusPlus
+
+I am currently the Engineering Lead for a startup called PlusPlus
+
+#+ATTR_HTML: :width 300px
+[[file:./plusplus.png]]
+
+But opinions are my own!
+
+** Confession Time
+
+/Hi, my name is Simeon Franklin and I am a Pythonista./
+
+** Confession Time
+
+- I like 🦆 typing and I cannot lie
+- I'm still not wild about types
+- I do quote from the /Zen of Python/ (Long Live Tim Peters)
+- There will probably be some Monty Python jokes
+
+* ruff
+  :PROPERTIES:
+  :background-color: #F7F9F1
+  :END:
+
+/Prologue/
+
+** New Project, who dis?
+
+In 2023 I joined a startup with a large mature Python/Django codebase.
+
+Large Python codebases can be challenging but fortunately we were all
+set up with tooling to enforce project coding standards.
+
+** linting tools
+
+Including but not limited to:
+
+- mypy (type checking)
+- bandit (security scanner)
+- mccabe (complexity scanner)
+- pep8 (formatting)
+- isort (formatting)
+- black (formatting)
+- pylint (formatting & code smells)
+- pyflakes (code smells)
+- flake8 (pep8 formatting for pyflakes)
+
+** Maturity is Good!
+
+For every commit a variety of tools run to ensure code reviews don't
+bikeshed over what line the parentheses goes on or how much whitespace
+to put around the commas.
+
+And also we detect a variety of bad code smells, potential security flaws, or un-pythonic code.
+
+#+HTML: <p class="fragment large">🎉</p>
+
+** Downsides
+
+- Speed: It can take several minutes to check a commit!
+- Complexity: A lot of tools and a lot of configuration files
+
+#+HTML: <p class="fragment large">😞</p>
+
+** Ruff
+
+Sometime in 2023 I noticed folks on Twitter talking about a new linter *Ruff*.
+
+It's written in Rust and it's supposed to be fast!
+
+I ignored it. My project is mature and messing with linting is low on my priority list.
+
+** Try it, Maybe You'll Like it!
+
+At some point we had a hackathon and I tried adding Ruff to my pre-commit chain as a replacement for flake8 to see if I'd notice the speed difference.
+
+** Huh
+
+Ruff is also a drop-in replacement for black and isort and mccabe?
+
+Ruff can replace pylint* and pyflakes too?
+
+/See https://github.com/astral-sh/ruff/issues/970 for Pylint compatibility status./
+
+Oh yeah - and the speed claims?
+
+** Speed
+
+See https://docs.astral.sh/ruff/#testimonials
+
+** Speed
+
+Nick Schrock, founder of Elementl, co-creator of GraphQL:
+
+#+BEGIN_QUOTE
+Why is Ruff a gamechanger? Primarily because it is nearly 1000x
+faster. Literally. Not a typo. On our largest module (dagster itself,
+250k LOC) pylint takes about 2.5 minutes, parallelized across 4 cores
+on my M1. Running ruff against our entire codebase takes .4 seconds.
+#+END_QUOTE
+
+** Speed
+
+Bryan Van de Ven, co-creator of Bokeh, original author of Conda:
+
+#+BEGIN_QUOTE
+Ruff is ~150-200x faster than flake8 on my machine,
+scanning the whole repo takes ~0.2s instead of ~20s. This is an
+enormous quality of life improvement for local dev. It's fast enough
+that I added it as an actual commit hook, which is terrific.
+#+END_QUOTE
+
+** Astral
+
+Ruff is created by a company called Astral
+
+https://docs.astral.sh/
+
+Founder https://x.com/charliermarsh
+
+** Ambitious
+
+#+ATTR_HTML: :width 900px
+[[file:./astral.png]]
+
+** Is this ambitious?
+
+Did Python really need another linter?
+
+The speed gains are impressive!
+
+And the extend and embrace attitude made a whole ecosystem of
+separate tools and community plugins un-necessary..
+
+** Rust & Speed
+
+https://blog.jetbrains.com/pycharm/2023/02/ruff-python-linter-interview-with-charlie-marsh/
+
+- speed is a feature
+- js world building tooling in "not js" for speed and reliability
+- esbuild (golang), bun (zig), swc (rust), etc.
+
+Takeaway: High level language tooling should be written in lower level languages
+languages for speed and ~rust~ is his weapon of choice.
+
+** Philosophy
+
+- In a mature language a single best-of-breed tool is better than an ecosystem of unix philosophy tools
+- For example ~ruff~ might someday expand to typechecking as well (mypy, pyright, etc)
+
+One fast tool for linting, autoformatting, typechecking? Yes please!
+
+* uv
+ :PROPERTIES:
+ :background-color: #FFFDE7
+ :END:
+
+Which leads to the next astral projection.
+
+** In a minute
+
+[[file:./different.png]]
+
+** Python Problems
+
+What's wrong with Python?
+
+#+ATTR_HTML: :style border: 0px
+[[https://s3.dualstack.us-east-2.amazonaws.com/pythondotorg-assets/media/files/python-logo-only.svg]]
+
+** Python Problems
+
+What's wrong with Python?
+
+- +significant whitespace+
+- +weak (optional) type system+
+- +slow runtime+
+
+Shut up hater!
+
+** Go away or I shall taunt you a second time!
+
+[[file:./taunt.jpg]]
+
+** Python Problems
+
+What's wrong with Python?
+
+- distribution
+- runtimes and environments
+- packaging and installation
+
+** Python Problems
+
+Even us fanboys have to admit: these are real problems that have
+been... /solved/ by whole ecosystems of competing tools.
+
+** Installing Python
+
+That's a job for your OS!
+
+Oh - don't install any packages into your OS-level python or you'll
+break your OS!
+
+** Installing Python
+
+What if my CentOS comes with Python 3.7 and I want 3.11?
+
+#+ATTR_HTML: :width 300px
+[[file:./compile.png]]
+
+If you aren't a Gentoo user this doesn't sound like a good time!
+
+** Managing Dependencies
+
+~pip install -r requirements.txt~ right?
+
+Oh you want completely reproducible builds of your Python project. No problem - just use one of:
+
+** Managing Dependencies
+
+- pip-tools
+- pipenv
+- poetry
+- pdm (poetry but better)
+- pipx (maybe you want to install an executable?)
+
+Oh and don't forget to add ~pyenv~ for the Python version management even if you use something else for dependencies.
+
+** Not to mention publishing packages
+
+Do I need ~hatchling~? And ~twine~?
+
+#+HTML: <p class="fragment large"><img src="https://i.imgflip.com/9hnn3d.jpg"></p>
+
+
+** Javascript folks: So?
+
+I know the javascript folks are not impressed but take it from me -
+this proliferation of tools is complexity and pain.
+
+** tl;dr
+
+I could keep ranting at length but let's take a thought exercise:
+
+#+BEGIN_QUOTE
+I have this cool script I found that's 30 lines of code and
+it uses a couple of scientific libraries. But when I save it and run
+it I get "ModuleNotFound: no module named scipy" error. How do I run it?
+
+-- A beginner
+#+END_QUOTE
+
+** Possible conversations
+
+- Do you know what a virtualenv is?
+- Make one of those, activate it, and run ~pip install scipy~. /Yes, from the command line./
+- Your system python doesn't ship with ~pip~ huh...
+- Have you ever heard of Anaconda Python? You're going to need to edit your system path...
+
+** This is pain
+
+Packaging, requirements, distribution...
+
+Coincidentally /stuff that was considered outside core Python historically./
+
+You may remember the long saga of ~easy_install~, ~distutils~, ~setuptools~, the bad old days of .eggs, etc.
+
+** uv
+
+Oh yeah - I was going to talk about ~uv~!
+
+In 2024 I found out Charlie Marsh and the folks at Astral were working on ~uv~.
+
+** uv
+
+#+ATTR_HTML: :width 800px
+[[file:./uv.png]]
+
+** deja vu
+
+Ok, I get fast is kind of your thing, Charlie. But ~pip install~ is fast enough for me...
+
+And do we really need yet another package manager? At least its not called ~yapip~.
+
+*[Insert relevant xkcd here]*
+
+** Yes!
+
+And I really need to stop underestimating astral and Charlie Marsh.
+
+** Features
+
+Speed. /Duh/
+
+Now that you mention it, updating a library in my dependencies takes
+10 minutes to produce a new set of pinned transitive dependencies
+using ~pip-compile~.
+
+** Transitive Dependencies
+
+Will it build?
+
+/requirements.txt/
+#+BEGIN_SRC
+a==1.0
+c>=5.0
+#+END_SRC
+
+I don't see why not...
+
+** Transitive Dependencies
+
+Resolve to find out... Don't forget to account for OS and version markers!
+
+#+BEGIN_HTML
+ <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+  </script>
+<pre class="mermaid" style="width:400px;">
+flowchart TD
+    a[a==1.0] --> b[b==2.x]
+    a --> d[c==5.x]
+    b --> c[c==4.x]
+</pre>
+#+END_HTML
+
+https://docs.astral.sh/uv/concepts/resolution/#basic-examples
+
+** Speed
+
+This can take a while with a real world project with hundreds of
+direct dependencies and thousands of transitive dependencies.
+
+~uv~ is orders of magnitude faster at this as well as orders of
+magnitude faster at actually installing dependencies.
+
+** Embrace & Replace
+
+Great - I suppose I have to learn a new config and new project workflow?
+
+Nope. ~uv~ is a drop-in replacement for ~pip~, ~pipx~, ~pip-tools~, ~virtualenv~, etc.
+
+** Embrace & Replace
+
+I updated my workflow from
+
+#+BEGIN_SRC
+$ pip-compile
+$ pip install -r
+#+END_SRC
+
+to
+#+BEGIN_SRC
+$ uv pip compile
+$ uv pip install -r
+#+END_SRC
+
+#+HTML: <p class="fragment large" style="color:red;">❤</p>
+
+** That was easy
+
+But is speed the only benefit of uv?
+
+** Distribution hurts less
+
+Demo time:
+
+#+BEGIN_SRC
+$ uvx --python 3.12 textual-demo
+#+END_SRC
+
+#+HTML: <p class="fragment"><em>Seriously - do this now.</em> </p>
+
+** Tool Management
+
+~uv~ is a ~pipsi~ / ~pipx~ replacement.
+
+Use ~uv tool run~ (or ~uvx~) which will download and install tools and run them.
+
+Installs to a virtualenv, auto ~$PATH~ managment, can specify what version of Python to use, etc.
+
+https://github.com/astral-sh/uv?tab=readme-ov-file#tool-management
+
+** Tool Management
+
+#+BEGIN_SRC
+$ uvx rich-cli
+The executable `rich-cli` was not found.
+warning: An executable named `rich-cli` is not provided by package `rich-cli`.
+The following executables are provided by `rich-cli`:
+- rich
+Consider using `uvx --from rich-cli <EXECUTABLE_NAME>` instead.
+#+END_SRC
+
+/That is a nice error message!/
+
+#+BEGIN_SRC
+$ uvx --from rich-cli rich -h 5 tags.csv
+┌────────────────────────────────┬────────────────────────────────┐
+│ accelerator                    │ Accelerator                    │
+│ accessibility                  │ Accessibility                  │
+│ advanced-java                  │ advanced java                  │
+│ advanced-python                │ Advanced Python                │
+│ agile-basics                   │ agile basics                   │
+└────────────────────────────────┴────────────────────────────────┘
+#+END_SRC
+
+** Python Management
+
+See https://github.com/astral-sh/python-build-standalone
+
+#+BEGIN_SRC
+$ uv python install 3.10 3.11 3.12
+Searching for Python versions matching: Python 3.10
+Searching for Python versions matching: Python 3.11
+Searching for Python versions matching: Python 3.12
+Installed 3 versions in 3.42s
+# Or as needed
+$ uv run --python 3.8 example.py
+#+END_SRC
+
+and remember - ~pyenv~ builds python from source. It does not take 3s!
+
+
+** Virtualenv
+
+#+BEGIN_SRC
+$ uv venv --python 3.12.0
+Using Python 3.12.0
+Creating virtual environment at: .venv
+Activate with: source .venv/bin/activate
+$ uv pip install foobar  # installs in .venv
+$ uv run myscript.py     # runs in virtualenv
+#+END_SRC
+
+** Project Management
+
+- ~uv init~ - .venv, pyproject.toml, .python-version, uv.lock
+- ~uv add~ - install, add to deps in pyproject, update lockfile
+- ~uv lock --upgrade-package~ - update only specified packages if possible
+
+** Script Dependencies
+
+#+BEGIN_SRC
+$ uv run --with flask example.py
+#+END_SRC
+
+https://docs.astral.sh/uv/guides/scripts/
+
+** Inline Script Dependencies
+
+See https://packaging.python.org/en/latest/specifications/inline-script-metadata/#inline-script-metadata
+
+My script - https://gist.github.com/simeonf/db61cfed74b75da6a17f92ad16afe649
+
+** Inline Script Dependencies
+
+Demo:
+
+#+BEGIN_SRC
+$ uv run https://gist.githubusercontent.com/simeonf/db61cfed74b75da6a17f92ad16afe649/raw/c563660afede009bb58bf52f6ed553c62093e479/example.py
+#+END_SRC
+
+** And much more
+
+Out of time to cover:
+
+- ~uv build~ and ~uv publish~
+- workspaces (stolen from rust's Cargo)
+- ~uv tree~ (replace ~pipdeptree~ / ~pipenv graph~ etc)
+- ~uv cache~ (manage your resolution cache with an eye towards GitHub Actions/CircleCi)
+
+* Conclusion
+  :PROPERTIES:
+  :background-color: #FBE8EA
+  :END:
+
+
+** Lessons Learned
+
+- Astral and Charlie Marsh are two for two!
+- Speed is a feature
+  - saving me CircleCI $$$ and developer attention
+- Theme: One integrated tool replaces an ecosystem of competing tools
+- Addressing Python pain points: packaging, requirements, distribution... all got a lot better in 2024
+
+** Gratitude
+
+My title is clickbait - but I do actually feel a lot less pain due to Charlie Marsh (and Rust I guess!)
+
+*** THANKS!
+
+** UV: Making Python Great Again!
+   :PROPERTIES:
+   :background-color: #D00
+   :END:
+
+/Gotta get some more clickbait in there.../
+
+** Questions?

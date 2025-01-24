@@ -1,0 +1,8 @@
+code {background-color: #DDD; }
+div.CENTER{border:1px solid #DDD; float: left;}
+section.level2{text-align:left;}
+.reveal section pre {margin-left:0px;}
+section#questions{text-align: center;}
+section#gratitude{text-align: center;}
+section#making-python-great-again p{font-size:.7em;margin-top:200px;}
+p.large{font-size:2em;text-align:center;}
